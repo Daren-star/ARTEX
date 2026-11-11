@@ -4,6 +4,184 @@
 
 ## [Unreleased]
 
+### 界面与访问控制
+
+- 新增英文界面本地化，并修复切换语言后部分预览崩溃。
+- Basic Auth 会话过期后当前标签页可自动恢复登录态，不再整页失效。
+
+### 流量与漏洞
+
+- 流量列表暴露流量 ID 并支持通过 HTTP 复制；漏洞统计支持按流量过滤。
+
+## [0.3.27] - 2026-11-05
+
+### 任务资产
+
+- 「任务间全局资产共享」改为显式开启（默认关闭）：跨任务共享资产需在任务里主动打开，避免资产范围被隐式放大。
+
+### 网络
+
+- 自定义出口 IP 探测服务支持持久化，重启后不再丢失（#118）。
+
+### 文档
+
+- README 更新。
+
+## [0.3.26] - 2026-11-03
+
+### 拦截审查（Jev）
+
+- 接入 Jev 拦截判定模型，对齐官方 System One 协议，并补充判定说明与失败兜底。
+
+### 代理
+
+- 新增代理异常暂停与自动重连恢复：探测失败按轮次门控暂停，恢复时重置重连计数并丢弃过期探测写回；暂停语义与任务暂停统一（代理池 #107）。
+
+### 访问控制
+
+- 健康检查端点同样要求 Basic Auth；公共响应移除应用指纹信息。
+
+### 网络搜索
+
+- 网络搜索改用 DeepSeek Search API。
+
+### 报告
+
+- 复用漏洞报告撰写对话：工具触发的撰写对话可回溯绑定，归档报告截图，并支持在弹窗内调整对话、保持滚动位置。
+
+### 界面
+
+- 任务列表支持列可见性设置；审批记录显示 agent 来源；Repeater 支持请求撤销；隐藏筛选与请求标签的滚动条。
+
+### 修复
+
+- 修复导出文件名 UTF-8 乱码、截图原生拖拽重影，以及暂停任务时 `/btw` 上下文回退失效。
+
+## [0.3.25] - 2026-10-29
+
+### 请求重放
+
+- 统一 HTTP 报文编辑器：保留报文高亮与选中、显示抓包时间、响应着色与换行编辑；Repeater 工作区重做。
+
+### 网络拓扑
+
+- 资产拓扑与资产图解耦，支持分层/分段模式、区域列保持、视口重置与路径聚焦；映射进度可恢复，节点坐标绑定 G6 样式。
+
+### 漏洞与报告
+
+- 漏洞列表新增日期范围筛选、分页大小与按时间排序；新增结构化复现截图；复测入口移到状态下方；漏洞详情新增侧边提问面板。
+- 新增任务流量历史与报告恢复，修复覆盖率缩放与 reporter 生成稳定性。
+
+### 任务运行
+
+- 运行时长排除暂停时间；加固重启与终端镜像下的任务运行时。
+
+### 资源与出口
+
+- 新增容器资源监控（兼容非 Linux 构建），仪表盘头部展示资源状态。
+- 全局代理支持连通性测试与出口 IP 显示（导航栏中部开关 + 顶部横幅）。
+
+### Agent
+
+- 任务名与对话标题双能力自动生成，含语义取消、清洗循环与拒绝占位回写。
+
+### 安全
+
+- 出口探测加固（PR #56）。
+
+## [0.3.24] - 2026-10-26
+
+### 请求重放（Repeater）
+
+- 发现页新增 Burp 风格侧边栏 Repeater 工作区：编辑完整 HTTP 请求、批量管理重放草稿、导入抓包流量、撤销、二进制正文预填、Cookie 合并。
+- 发送侧加固：直连拨号改由请求超时控制、一次性传输在取消阶段超时并回收空闲连接、DNS 重绑定与数字主机 SSRF 防护、支持局域网 HTTP 源。
+
+### 多模型 Worker 池
+
+- 支持按 LLM 配置分配并发会话；绑定配置不可用时明确报错而非静默回退；暂停意图续跑保持绑定模型。
+
+### 漏洞归并
+
+- 分组重复建议 + 候选排序，降低重复确认噪音；组内拒绝后仍可归并、删除漏洞时重锚、陈旧建议写入防护。
+
+### 任务与模板
+
+- 任务/模板备注（上限 2000 字）与 Worker 运行数量配置；应用模板时把备注与 Worker 数纳入覆盖确认。
+- 任务发现/复测支持严重度筛选、排序与按钮搜索。
+
+### 构建
+
+- Go 升级至 1.26.10，拦截泄露的 eMudhra 中间 CA。
+
+## [0.3.23] - 2026-10-20
+
+### 凭据处理
+
+- 新增可选凭据处理：依赖开关联动，处理结果作为流量证据留存；凭据流量卡片支持通过 HTTP 复制。
+
+### 任务情报
+
+- 新增可选任务情报录制与查看：表格内直接展示内容、按类别着色，会话列直链会话，可从情报跳回来源会话与关联资产。
+
+### 审批
+
+- 模型审批失败默认策略改为转人工（不再默认放行）；失败重试默认 3 次。
+
+### 计划任务
+
+- 修复计划任务窗口外的「手动启动」被吞。
+
+### 部署
+
+- Demo 部署的版本元数据校验支持重试。
+
+## [0.3.22] - 2026-10-19
+
+### 任务与计划
+
+- 任务与计划任务支持行内备注，列表编辑器与名称悬浮操作对齐。
+- 修复启动后新开的日历窗口被跳过（#16）。
+
+### 在线更新
+
+- 支持配置可选 HTTP 代理。
+
+### 部署
+
+- 新增 Vercel Demo 自动部署（#15）：正式版发布后构建 Mock 前端并部署，域名通过项目 API 绑定到配置的团队。
+
+### 修复
+
+- Windows 下 skill 的 API 路径归一化（#18）。
+
+## [0.3.21] - 2026-10-15
+
+### 审批
+
+- 模型审批支持配置重试次数与间隔；审批提示词编辑器卡片高度铺满。
+
+### LLM
+
+- 严格限制 LLM HTTP 请求速率。
+
+### 修复
+
+- 复制 HTTP 报文时保留空行；漏洞归并后任务列表的严重度计数不再丢失。
+
+## [0.3.20] - 2026-10-13
+
+### 审批
+
+- 改进静态脚本审查；「脚本快照不完整」默认策略改为交给模型判断。
+
+## [0.3.19] - 2026-10-12
+
+### 审批
+
+- 新增「脚本快照不完整」策略配置：脚本无法完整附加时可强制转人工，避免隐藏副作用被放行。
+- 修复无脚本或脚本未变更的调用被误判为快照不完整而触发复审。
+- 修复审批详情页无内容时仍留出空白区域。
+
 ## [0.3.18] - 2026-10-12
 
 ### 审批审查
@@ -925,13 +1103,30 @@
 - [@Autumn-27](https://github.com/Autumn-27)
 - [@neouks](https://github.com/neouks)
 
-[Unreleased]: https://github.com/Autumn-27/ARTEX/compare/v0.3.10...HEAD
-[0.3.10]: https://github.com/Autumn-27/ARTEX/compare/v0.3.9...v0.3.10
-[0.3.9]: https://github.com/Autumn-27/ARTEX/compare/v0.3.8...v0.3.9
-[0.3.8]: https://github.com/Autumn-27/ARTEX/compare/v0.3.7...v0.3.8
-[0.3.7]: https://github.com/Autumn-27/ARTEX/compare/v0.3.6...v0.3.7
-[0.3.6]: https://github.com/Autumn-27/ARTEX/compare/v0.3.5...v0.3.6
-[0.3.5]: https://github.com/Autumn-27/ARTEX/compare/v0.3.4...v0.3.5
-[0.3.4]: https://github.com/Autumn-27/ARTEX/compare/v0.3.3...v0.3.4
-[0.3.3]: https://github.com/Autumn-27/ARTEX/compare/v0.3.2...v0.3.3
-[0.3.2]: https://github.com/Autumn-27/ARTEX/compare/v0.3.1...v0.3.2
+[Unreleased]: https://github.com/RuoJi6/ARTEX/compare/v0.3.27...HEAD
+[0.3.27]: https://github.com/RuoJi6/ARTEX/compare/v0.3.26...v0.3.27
+[0.3.26]: https://github.com/RuoJi6/ARTEX/compare/v0.3.25...v0.3.26
+[0.3.25]: https://github.com/RuoJi6/ARTEX/compare/v0.3.24...v0.3.25
+[0.3.24]: https://github.com/RuoJi6/ARTEX/compare/v0.3.23...v0.3.24
+[0.3.23]: https://github.com/RuoJi6/ARTEX/compare/v0.3.22...v0.3.23
+[0.3.22]: https://github.com/RuoJi6/ARTEX/compare/v0.3.21...v0.3.22
+[0.3.21]: https://github.com/RuoJi6/ARTEX/compare/v0.3.20...v0.3.21
+[0.3.20]: https://github.com/RuoJi6/ARTEX/compare/v0.3.19...v0.3.20
+[0.3.19]: https://github.com/RuoJi6/ARTEX/compare/v0.3.18...v0.3.19
+[0.3.18]: https://github.com/RuoJi6/ARTEX/compare/v0.3.17...v0.3.18
+[0.3.17]: https://github.com/RuoJi6/ARTEX/compare/v0.3.16...v0.3.17
+[0.3.16]: https://github.com/RuoJi6/ARTEX/compare/v0.3.15...v0.3.16
+[0.3.15]: https://github.com/RuoJi6/ARTEX/compare/v0.3.14...v0.3.15
+[0.3.14]: https://github.com/RuoJi6/ARTEX/compare/v0.3.13...v0.3.14
+[0.3.13]: https://github.com/RuoJi6/ARTEX/compare/v0.3.12...v0.3.13
+[0.3.12]: https://github.com/RuoJi6/ARTEX/compare/v0.3.11...v0.3.12
+[0.3.11]: https://github.com/RuoJi6/ARTEX/compare/v0.3.10...v0.3.11
+[0.3.10]: https://github.com/RuoJi6/ARTEX/compare/v0.3.9...v0.3.10
+[0.3.9]: https://github.com/RuoJi6/ARTEX/compare/v0.3.8...v0.3.9
+[0.3.8]: https://github.com/RuoJi6/ARTEX/compare/v0.3.7...v0.3.8
+[0.3.7]: https://github.com/RuoJi6/ARTEX/compare/v0.3.6...v0.3.7
+[0.3.6]: https://github.com/RuoJi6/ARTEX/compare/v0.3.5...v0.3.6
+[0.3.5]: https://github.com/RuoJi6/ARTEX/compare/v0.3.4...v0.3.5
+[0.3.4]: https://github.com/RuoJi6/ARTEX/compare/v0.3.3...v0.3.4
+[0.3.3]: https://github.com/RuoJi6/ARTEX/compare/v0.3.2...v0.3.3
+[0.3.2]: https://github.com/RuoJi6/ARTEX/compare/v0.3.1...v0.3.2
