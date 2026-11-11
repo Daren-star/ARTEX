@@ -59,6 +59,12 @@ func resetTestSchema(dsn, schema string) bool {
 	if testSchemaSource == dsn {
 		return testSchemaReady
 	}
+	if os.Getenv("ARTEX_TEST_KEEP_SCHEMA") == "1" {
+		// 调试用：保留上一轮的数据（默认每次都重建，保证可重复）。
+		ready := ensureSchema(dsn, schema)
+		testSchemaSource, testSchemaReady = dsn, ready
+		return ready
+	}
 	admin, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return false
@@ -75,6 +81,20 @@ func resetTestSchema(dsn, schema string) bool {
 	}
 	testSchemaSource, testSchemaReady = dsn, true
 	return true
+}
+
+// ensureSchema 只建不删，供 ARTEX_TEST_KEEP_SCHEMA=1 时复用上一轮数据。
+func ensureSchema(dsn, schema string) bool {
+	admin, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return false
+	}
+	defer admin.Close()
+	if err := admin.Ping(); err != nil {
+		return false
+	}
+	_, err = admin.Exec(`CREATE SCHEMA IF NOT EXISTS "` + schema + `"`)
+	return err == nil
 }
 
 // isolateTestSchema 给测试连接注入 search_path。任何一步失败都退回原 DSN：
