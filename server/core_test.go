@@ -73,8 +73,9 @@ func TestCoreTaskLifecyclePG(t *testing.T) {
 	}
 
 	// the exploration owns goal node(s) — goal seeding is async, poll briefly
+	// （整跑时多个测试包同时压 PG，3s 不够；放宽到 10s，断言本身不变）
 	var goals []*db.Node
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 100; i++ {
 		goals, err = m.pg.Exploration(expID).ListByKind("goal", 10)
 		if err != nil || len(goals) > 0 {
 			break
@@ -96,12 +97,20 @@ func TestCoreTaskLifecyclePG(t *testing.T) {
 
 	// The task detail header consumes the top-level engine mode while some clients
 	// read the active-task snapshot. Keep both representations in sync.
-	code, out = doRetry("GET", "/api/stats?task="+id, nil)
-	if code != 200 {
-		t.Fatalf("task stats: %d (%v)", code, out)
+	// 引擎模式是异步切换的：允许短暂不一致，但必须在超时内收敛到一致。
+	var activeTask map[string]any
+	for i := 0; i < 30; i++ {
+		code, out = doRetry("GET", "/api/stats?task="+id, nil)
+		if code != 200 {
+			t.Fatalf("task stats: %d (%v)", code, out)
+		}
+		activeTask, _ = out["active_task"].(map[string]any)
+		if activeTask != nil && activeTask["engine_mode"] == out["engine_mode"] {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
-	activeTask, ok := out["active_task"].(map[string]any)
-	if !ok || activeTask["engine_mode"] != out["engine_mode"] {
+	if activeTask == nil || activeTask["engine_mode"] != out["engine_mode"] {
 		t.Fatalf("engine mode mismatch: top=%v active_task=%v", out["engine_mode"], activeTask)
 	}
 
