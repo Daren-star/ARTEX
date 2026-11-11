@@ -3,7 +3,6 @@ package llmrec
 import (
 	"context"
 	"iter"
-	"os"
 	"testing"
 
 	"github.com/Autumn-27/artex/db"
@@ -83,15 +82,21 @@ func (meteredStreamProvider) Stream(context.Context, llm.CompletionRequest) iter
 }
 
 func TestSideUsageRecordedOnceOnConsumerCancellation(t *testing.T) {
-	dsn := os.Getenv("ARTEX_PG_DSN")
-	if dsn == "" {
-		t.Skip("requires isolated ARTEX_PG_DSN")
+	// 走 db.DSN() 而不是裸读环境变量：测试二进制里它会带上本包的 search_path，
+	// 否则连到 public schema 会找不到 llm_usage（各包 schema 隔离，见 db/testschema.go）。
+	dsn, _, err := db.DSN()
+	if err != nil {
+		t.Skip("requires ARTEX_PG_DSN")
 	}
 	pg, err := db.Open(dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer pg.Close()
+	// 自带建表：以前是靠别的包在 public schema 里留下的 llm_usage，schema 隔离后不再成立。
+	if err := pg.EnsureLLMUsageTable(); err != nil {
+		t.Fatal(err)
+	}
 	for _, early := range []bool{false, true} {
 		profile := "btw-metering-" + uuid.NewString()
 		ctx, cancel := context.WithCancel(transcript.WithSessionID(t.Context(), "exp0-btw-test"))

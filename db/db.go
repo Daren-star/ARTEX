@@ -89,8 +89,14 @@ func coordinateWithSchemaMigration(tx *sql.Tx) error {
 // DSN resolves the PostgreSQL connection string and reports where it came from.
 // Precedence: env ARTEX_PG_DSN > config file (config.json). There is no
 // built-in default — it errors if neither source is configured.
+// 测试二进制里返回的 DSN 已带上本包的 search_path（见 testschema.go），这样测试自己
+// 用 sql.Open 直连也落在同一个 schema，不会和别的包共用 public。
 func DSN() (dsn, source string, err error) {
-	return config.PostgresDSN()
+	dsn, source, err = config.PostgresDSN()
+	if err != nil {
+		return "", source, err
+	}
+	return isolateTestSchema(dsn), source, nil
 }
 
 // DB wraps the shared *sql.DB. PG handles its own connection pool + concurrency
@@ -131,6 +137,7 @@ func ensureDatabase(dsn string) error {
 
 // Open connects, applies the schema (idempotent), and seeds builtin rows.
 func Open(dsn string) (*DB, error) {
+	dsn = isolateTestSchema(dsn)
 	if err := ensureDatabase(dsn); err != nil {
 		return nil, err
 	}

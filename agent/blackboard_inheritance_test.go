@@ -82,26 +82,49 @@ func TestGraphOverviewExpandsAssociatedCompanyScope(t *testing.T) {
 	if !ok {
 		t.Fatalf("coverage missing: %#v", overview["coverage"])
 	}
-	scopeRows, ok := coverage["scope"].([]map[string]any)
-	if !ok || len(scopeRows) != 1 {
-		t.Fatalf("task scope missing: %#v", coverage["scope"])
+	// coverage.scope（范围根资产 + company 富化）在 06a43f3「精简态势概览字段」里被刻意删除：
+	// 概览只保留覆盖度度量，范围明细按需由 add_task_scope/list_assets 取。这里锁住新契约，
+	// 免得有人悄悄把整块 scope 又塞回每轮上下文。
+	if _, exists := coverage["scope"]; exists {
+		t.Fatalf("coverage.scope should not be part of the situational snapshot: %#v", coverage["scope"])
 	}
-	companyScope, ok := scopeRows[0]["company_scope"].([]map[string]any)
-	if !ok || len(companyScope) != len(inputs) {
-		t.Fatalf("company scope not expanded: %#v", scopeRows[0])
+	if denom, _ := coverage["denominator"].(int); denom < 1 {
+		t.Fatalf("company scope did not anchor task coverage: %#v", coverage)
 	}
-	kinds := make(map[string]string, len(companyScope))
-	for _, rule := range companyScope {
-		kinds[fmt.Sprint(rule["kind"])] = fmt.Sprint(rule["value"])
+	// 范围规则本身仍要落库（资产归因靠它），只是不再平铺进概览。库里存的是规范化后的值
+	// （域名小写、ICP 去空格），比对时按同样口径归一。
+	rules, err := companies.GetScope(companyID)
+	if err != nil {
+		t.Fatalf("company scope rules: %v", err)
+	}
+	kinds := make(map[string]string, len(rules))
+	for _, rule := range rules {
+		value := rule.Value
+		if value == "" {
+			value = rule.Domain
+		}
+		if value == "" {
+			value = rule.Net
+		}
+		if value == "" {
+			value = rule.Raw
+		}
+		kinds[rule.Kind] = value
+	}
+	normalize := func(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), "")) }
+	// 单个 IP 在库里按主机网段存（v6 → /128，v4 → /32），比对时去掉这个主机位后缀。
+	hostBits := func(s string) string {
+		for _, suffix := range []string{"/128", "/32"} {
+			if strings.HasSuffix(s, suffix) {
+				return strings.TrimSuffix(s, suffix)
+			}
+		}
+		return s
 	}
 	for _, input := range inputs {
-		if kinds[input.Kind] != input.Value {
+		if normalize(hostBits(kinds[input.Kind])) != normalize(input.Value) {
 			t.Errorf("scope %s=%q want %q", input.Kind, kinds[input.Kind], input.Value)
 		}
-	}
-	keywords, ok := scopeRows[0]["company_keywords"].([]string)
-	if !ok || len(keywords) != 1 || keywords[0] != keyword {
-		t.Fatalf("company keywords missing: %#v", scopeRows[0]["company_keywords"])
 	}
 	if hc, _ := coverage["host_count"].(int); hc < 1 {
 		t.Fatalf("company asset host not counted in agent context: %#v", coverage["host_count"])

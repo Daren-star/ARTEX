@@ -158,10 +158,18 @@ func TestInterceptApprovalFilters(t *testing.T) {
 	if err != nil || total != 1 || len(rows) != 1 || rows[0].ID != searchID {
 		t.Fatalf("id search total=%d rows=%d err=%v", total, len(rows), err)
 	}
+	// 日期区间按 UTC 自然日、首尾都含：用该行自身的日期能命中，未来日期必须排除。
+	createdDay := rows[0].CreatedAt.UTC().Format("2006-01-02")
 	rows, total, err = d.ListTaskInterceptsPage(scope, 1, 20, InterceptApprovalFilter{
-		Search: "example.test", CreatedFrom: "2099-01-01", CreatedTo: "2099-01-01",
+		Search: "example.test", CreatedFrom: createdDay, CreatedTo: createdDay,
 	})
 	if err != nil || total != 1 || len(rows) != 1 || rows[0].ID != searchID {
 		t.Fatalf("date search total=%d rows=%d err=%v", total, len(rows), err)
+	}
+	rows, total, err = d.ListTaskInterceptsPage(scope, 1, 20, InterceptApprovalFilter{
+		Search: "example.test", CreatedFrom: "2099-01-01", CreatedTo: "2099-01-01",
+	})
+	if err != nil || total != 0 || len(rows) != 0 {
+		t.Fatalf("future date should exclude rows: total=%d rows=%d err=%v", total, len(rows), err)
 	}
 }

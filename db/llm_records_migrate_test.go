@@ -34,9 +34,10 @@ func TestLLMRecordsMigrateAddsRawColumnsToOldTable(t *testing.T) {
 
 	for _, col := range []string{"raw_request", "raw_response"} {
 		var n int
+		// 限定当前 schema：测试各自独占 schema，同库里其它包的同名表会把 count 变成 2。
 		if err := tx.QueryRow(
 			`SELECT count(*) FROM information_schema.columns
-			 WHERE table_name='llm_records' AND column_name=$1`, col).Scan(&n); err != nil {
+			 WHERE table_schema=current_schema() AND table_name='llm_records' AND column_name=$1`, col).Scan(&n); err != nil {
 			t.Fatalf("inspect %s: %v", col, err)
 		}
 		if n != 1 {

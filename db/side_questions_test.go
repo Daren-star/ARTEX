@@ -318,7 +318,12 @@ func TestSideClearLateWritersAndDeletedParent(t *testing.T) {
 }
 
 func TestSideTaskArchiveVersions(t *testing.T) {
-	for _, version := range []int{1, 2, 3} {
+	// 覆盖历史格式 1..3 与当前格式（4 起多了 task_intelligence，见 d70dd15）。
+	versions := []int{1, 2, 3}
+	if TaskArchiveFormatVersion > 3 {
+		versions = append(versions, TaskArchiveFormatVersion)
+	}
+	for _, version := range versions {
 		t.Run(fmt.Sprint(version), func(t *testing.T) {
 			d, err := Open(testDSN(t))
 			if err != nil {
@@ -383,7 +388,7 @@ func TestSideTaskArchiveVersions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if archive.FormatVersion != 3 || archive.DataCounts["side_question_sessions"] != 2 || archive.DataCounts["side_question_requests"] != 2 {
+			if archive.FormatVersion != TaskArchiveFormatVersion || archive.DataCounts["side_question_sessions"] != 2 || archive.DataCounts["side_question_requests"] != 2 {
 				t.Fatalf("missing side archive: %+v", archive.DataCounts)
 			}
 			if err = d.CompleteTaskArchive(job.ID, archive, "/tmp/side-fixture.tar.zst", "fixture", 1, 1); err != nil {

@@ -41,15 +41,17 @@ func TestCaptureApprovalLifecycle(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name, action, status, execution string
-		manual, approve, toolError      bool
+		name, action, status, source, initial, execution string
+		manual, approve, toolError                       bool
 	}{
-		{"model_fallback", "invalid", "allowed", "succeeded", false, false, false},
-		{"model_allow", "allow", "allowed", "succeeded", false, false, false},
-		{"model_deny", "deny", "denied", "not_executed", false, false, false},
-		{"human_allow_tool_error", "ask", "allowed", "failed", true, true, true},
-		{"human_deny", "ask", "denied", "not_executed", true, false, false},
-		{"timeout_allow", "ask", "timeout", "succeeded", false, false, false},
+		// 模型输出不可解析时，默认失败策略是转人工（b2373b2），没人处理就按超时策略放行；
+		// 人工裁决的行 decision_source 记为 manual（a91c0a7），模型/超时的记为 model。
+		{"model_fallback", "invalid", "timeout", "model", "ask", "succeeded", false, false, false},
+		{"model_allow", "allow", "allowed", "model", "allow", "succeeded", false, false, false},
+		{"model_deny", "deny", "denied", "model", "deny", "not_executed", false, false, false},
+		{"human_allow_tool_error", "ask", "allowed", "manual", "ask", "failed", true, true, true},
+		{"human_deny", "ask", "denied", "manual", "ask", "not_executed", true, false, false},
+		{"timeout_allow", "ask", "timeout", "model", "ask", "succeeded", false, false, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ic.SetReviewer(func(context.Context, int64, string, intercept.ReviewInput) (intercept.Decision, error) {
@@ -112,20 +114,16 @@ func TestCaptureApprovalLifecycle(t *testing.T) {
 				t.Fatal(err)
 			}
 			a := detail.Audit
-			initialAction := tc.action
-			if tc.action == "invalid" {
-				initialAction = "allow"
-			}
 			wantUserMessage := "record this review"
-			if initialAction == "allow" {
+			if tc.initial == "allow" {
 				// Routine automatic allows keep decision/execution metadata but
 				// intentionally omit the bulky replay context from the audit row.
 				wantUserMessage = ""
 			}
-			if detail.Status != tc.status || detail.DecisionSource != "model" || a == nil || a.ExecutionStatus != tc.execution || a.ToolUseID != "probe-call" || a.UserMessage != wantUserMessage || a.InitialAction != initialAction || a.ModelFallback != (tc.action == "invalid") || a.ProfileID != 7 {
+			if detail.Status != tc.status || detail.DecisionSource != tc.source || a == nil || a.ExecutionStatus != tc.execution || a.ToolUseID != "probe-call" || a.UserMessage != wantUserMessage || a.InitialAction != tc.initial || a.ModelFallback != (tc.action == "invalid") || a.ProfileID != 7 {
 				t.Fatalf("unexpected review: row=%+v audit=%+v", detail.InterceptApprovalRow, a)
 			}
-			if initialAction == "allow" && (len(a.Context) != 0 || a.UserTruncated || a.ContextTruncated) {
+			if tc.initial == "allow" && (len(a.Context) != 0 || a.UserTruncated || a.ContextTruncated) {
 				t.Fatalf("routine allow retained replay context: %+v", a)
 			}
 			wantCalls := 1
